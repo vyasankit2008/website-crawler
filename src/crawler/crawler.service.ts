@@ -12,6 +12,15 @@ import { PageMetadata } from './entities/page-metadata.entity';
 import { loadPageHtml } from './utils/page-loader';
 import { extractMetadata } from './utils/metadata-extractor';
 import { extractSizeOptions } from './utils/size-extractor';
+import {
+  extractDropdownOptions,
+  OptionItem,
+} from './utils/extractDropdownOptions';
+
+export interface VariantData {
+  url: string;
+  data: any;
+}
 
 @Injectable()
 export class CrawlerService {
@@ -167,23 +176,68 @@ export class CrawlerService {
   async debugSingleProduct(url: string) {
     console.log('🔍 Base product:', url);
 
+    // 1️⃣ Load base page
     const baseHtml = await loadPageHtml(url);
     const baseData = extractMetadata(baseHtml);
 
-    const sizes = extractSizeOptions(baseHtml);
+    // 2️⃣ Extract all dropdown options
+    const dropdownOptions = extractDropdownOptions(baseHtml);
 
-    const variants: Record<string, any> = {};
+    // 3️⃣ Group options by selectId
+    const optionsBySelect: Record<string, OptionItem[]> = {};
+    for (const opt of dropdownOptions) {
+      if (!optionsBySelect[opt.selectId]) optionsBySelect[opt.selectId] = [];
+      optionsBySelect[opt.selectId].push(opt);
+    }
 
-    for (const size of sizes) {
-      console.log('➡ Crawling size variant:', size.label);
+    // 4️⃣ Generate all combinations of options
+    function cartesianProduct(arrays: OptionItem[][]): OptionItem[][] {
+      return arrays.reduce(
+        (acc, curr) =>
+          acc
+            .map((a) => curr.map((c) => [...a, c]))
+            .reduce((a, b) => a.concat(b), []),
+        [[]] as OptionItem[][],
+      );
+    }
 
-      const sizeHtml = await loadPageHtml(size.url);
-      const sizeData = extractMetadata(sizeHtml);
+    const optionArrays = Object.values(optionsBySelect);
+    const combinations = optionArrays.length
+      ? cartesianProduct(optionArrays)
+      : [[]];
 
-      variants[size.label] = {
-        url: size.url,
-        data: sizeData,
-      };
+    // 5️⃣ Crawl each combination
+    const variants: Record<string, VariantData> = {};
+
+    for (const combo of combinations) {
+      const comboLabel = combo
+        .map((c) => `${c.selectId}:${c.label}`)
+        .join(' | ');
+
+      console.log('➡ Crawling variant:', comboLabel);
+
+      // Build URL with query params if needed
+      let variantUrl = url;
+      if (combo.length) {
+        // Use encodeURIComponent on both selectId and value
+        const params = combo.map((c) => {
+          // Replace forward slash with its URL-encoded version
+          const safeValue = c.value.replace(/\//g, '%2F');
+          return `${encodeURIComponent(c.selectId)}=${encodeURIComponent(safeValue)}`;
+        });
+
+        variantUrl = url.includes('?')
+          ? `${url}&${params.join('&')}`
+          : `${url}?${params.join('&')}`;
+      }
+
+      try {
+        const html = await loadPageHtml(variantUrl);
+        const data = extractMetadata(html);
+        variants[comboLabel] = { url: variantUrl, data };
+      } catch (err) {
+        console.error('❌ Failed variant:', comboLabel, err.message);
+      }
     }
 
     return {
