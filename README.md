@@ -79,15 +79,39 @@ src/
 
 ## ⚙️ Environment Setup
 
-Create a `.env` file in the project root:
+### Quick Start
 
+1. **Copy the example file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env`** and fill in your Supabase credentials
+
+3. **See [ENV_SETUP.md](./ENV_SETUP.md)** for detailed instructions on getting your Supabase credentials
+
+### Configuration Options
+
+**Option 1: Supabase Pooler (Recommended)**
 ```env
-DATABASE_HOST=localhost
+DB_POOLER_HOST=aws-1-us-east-2.pooler.supabase.com
+DB_POOLER_USER=postgres.deaohsesihodomvhqlxe
+DB_POOLER_PORT=6543
+DB_PASSWORD=your_password
+DB_NAME=postgres
+```
+
+**Option 2: Direct Connection**
+```env
+DATABASE_HOST=db.deaohsesihodomvhqlxe.supabase.co
 DATABASE_PORT=5432
 DATABASE_USER=postgres
 DATABASE_PASSWORD=your_password
-DATABASE_NAME=website_crawler
+DATABASE_NAME=postgres
+DATABASE_SSL=true
 ```
+
+**Note**: SSL is automatically enabled for remote hosts (Supabase). See [ENV_SETUP.md](./ENV_SETUP.md) for complete setup instructions.
 
 ---
 

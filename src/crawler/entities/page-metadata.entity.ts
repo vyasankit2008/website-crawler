@@ -24,7 +24,10 @@ export class PageMetadata {
   description: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  meta_json: any;
+  metadata: any; // Main metadata object from extractMetadata()
+
+  @Column({ type: 'jsonb', nullable: true })
+  meta_json: any; // Legacy field (kept for backward compatibility)
 
   @Column({ type: 'jsonb', nullable: true })
   breadcrumbs_json: any;
